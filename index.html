@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+	
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>AoIP con WebRTC</title>
+		<link rel="icon" type="image/x-icon" href="/source/icon/favicon.ico">
+		<link rel="stylesheet" href="css/main.css"/>
+	</head>
+	
+	<body>
+		
+		<header>
+			<h1>Estudio e Implementación de aplicaciones soportadas en WebRTC que permitan mejorar la Calidad de Experiencia (QoE) del Audio sobre IP (AoIP)</h1>
+		</header>
+		<div class="container">
+			<section class="audio_display">
+				<p id=room_name></p>
+				<audio controls id="localAudio" autoplay muted></audio>
+				<audio controls id="remoteAudio" autoplay></audio>
+				<br>
+				<br>
+				Codec de preferencia a usar:
+				<select id="codec_selector">
+					<option value="opus/48000" selected = "selected">OPUS variable bit rate (6kbps-510kbps)</option>
+					<option value="ISAC/16000">ISAC 16kbps bit rate</option>
+					<option value="ISAC/32000">ISAC 32kbps bit rate</option>
+					<option value="iLBC/8000">iLBC</option>
+					<option value="G722/8000">G.722</option>
+				</select>
+			</section>
+			<section class="net_statistics">
+				<button id="start_test_btn">Mostrar estadisticas de red</button>
+				<br>
+				Codec activo: 
+				<p id=active_codec></p>
+				<div id="peer"></div>
+				<div id="senderStats"></div>
+				<div id="receiverStats"></div>
+			</section>
+		</div>
+		<footer>2018</footer>
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+		<script src="js/main.js"></script>
+		
+	</body>
+	
+</html>

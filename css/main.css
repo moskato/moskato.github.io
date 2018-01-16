@@ -1,0 +1,27 @@
+body {
+	font-family: sans-serif;
+}
+
+div.container {
+    width: 100%;
+    /*border: 1px solid gray;*/
+}
+
+section.net_statistics {
+	margin-top: 1em;
+	padding: 1em;
+	border: 1px solid gray;
+}
+
+#room_name {
+	font-size: 120%;
+	font-weight: bold;
+}
+
+header, footer {
+    padding: 1em;
+    color: Black;
+    background-color: white;
+    clear: left;
+    text-align: center;
+}
