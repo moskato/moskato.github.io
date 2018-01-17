@@ -232,7 +232,7 @@ function maybeStart() {
 		pc.addStream(localStream);
 		isStarted = true;
 		codec_selector.disabled = true; // Deshabilitar la interfaz de selección de codec.
-		start_test_btn.disabled = false; // Habilitar la el boton de muestra de información de red.
+		start_test_btn.disabled = false; // Habilitar el boton de muestra de información de red.
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
 			doCall();
@@ -355,8 +355,9 @@ function hangup() {
 function handleRemoteHangup() {
 	console.log('Session terminated.');
 	stop();
+	isInitiator = true;
+	codec_selector.disabled = false; // Habilitar la interfaz de selección de codec.
 	alert('La conexión se ha terminado');
-	isInitiator = false;
 }
 
 function stop() {
