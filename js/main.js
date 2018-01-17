@@ -217,11 +217,11 @@ function gotStream(stream) {
 	* Si la petición de la pagina no se hace desde la direccion de loopback se intenta obtener 
 	* un servidor TURN libre del listado de computeengineondemand.appspot.com
 */
-if (location.hostname !== 'localhost') {
+/*if (location.hostname !== 'localhost') {
 	requestTurn(
     'https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913'
 	);
-}
+}*/
 
 
 function maybeStart() {
