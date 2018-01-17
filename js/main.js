@@ -7,7 +7,7 @@ var localStream;
 var pc;
 var remoteStream;
 var turnReady;
-var SIGNALING_SERVER = '190.96.192.11';
+var SIGNALING_SERVER = '190.254.213.124';
 var codec_selector = document.getElementById('codec_selector');
 var room_name = document.getElementById('room_name');
 var localAudio = document.getElementById('localAudio');
