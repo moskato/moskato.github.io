@@ -16,28 +16,37 @@
 		</header>
 		<div class="container">
 			<section class="audio_display">
-				<p id=room_name></p>
-				<audio controls id="localAudio" autoplay muted></audio>
-				<audio controls id="remoteAudio" autoplay></audio>
-				<br>
+				<p id="room_name"></p>
+				<div class="flex-container">
+					<div class="audio_controls">
+						Audio Local
+						<br>
+						<audio controls id="localAudio" autoplay muted></audio>
+					</div>
+					<div class="audio_controls">
+						Audio Remoto
+						<br>
+						<audio controls id="remoteAudio" autoplay></audio>
+					</div>
+				</div>
 				<br>
 				Codec de preferencia a usar:
 				<select id="codec_selector">
 					<option value="opus/48000" selected = "selected">OPUS variable bit rate (6kbps-510kbps)</option>
 					<option value="ISAC/16000">ISAC 16kbps bit rate</option>
 					<option value="ISAC/32000">ISAC 32kbps bit rate</option>
-					<option value="iLBC/8000">iLBC</option>
 					<option value="G722/8000">G.722</option>
+					<option value="iLBC/8000" disabled>iLBC</option>
 				</select>
 			</section>
 			<section class="net_statistics">
 				<button id="start_test_btn">Mostrar estadisticas de red</button>
 				<br>
 				Codec activo: 
-				<p id=active_codec></p>
+				<p id="active_codec"></p>
 				<div id="peer"></div>
 				<div id="senderStats"></div>
-				<div id="receiverStats"></div>
+			<div id="receiverStats"></div>
 			</section>
 		</div>
 		<footer>2018</footer>

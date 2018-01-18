@@ -7,6 +7,16 @@ div.container {
     /*border: 1px solid gray;*/
 }
 
+.flex-container {
+  display: flex;
+}
+
+div.audio_controls {
+	border:2px solid #a1a1a1;
+	border-radius:20px;
+	padding:0.8em;
+}
+
 section.net_statistics {
 	margin-top: 1em;
 	padding: 1em;
