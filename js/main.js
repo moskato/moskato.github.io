@@ -16,10 +16,10 @@ var start_test_btn = document.getElementById('start_test_btn');
 start_test_btn.disabled = true;
 start_test_btn.onclick = startTest;
 var active_codec = document.getElementById('active_codec');
-
+var peer_info = document.getElementById('peer_info');
 var senderStatsDiv = document.querySelector('div#senderStats');
 var receiverStatsDiv = document.querySelector('div#receiverStats');
-var peerDiv = document.querySelector('div#peer');
+
 
 // Configuración del servidor STUN a utilizar por defecto.
 var pcConfig = {
@@ -136,7 +136,7 @@ function startTest() {
 	console.log('local sdp: ',pc.localDescription.sdp);
 	console.log('remote sdp: ',pc.remoteDescription.sdp);
 	var a_codec = getCodec(pc.localDescription.sdp);
-	active_codec.innerHTML = a_codec;
+	active_codec.innerHTML = 'Codec activo: ' + a_codec;
 	
 	// Display statistics
 	setInterval(function() {
@@ -171,11 +171,11 @@ function startTest() {
 				}
 				if (remoteCandidate) {
 					if (remoteCandidate.ip && remoteCandidate.port) {
-						peerDiv.innerHTML = '<strong>Connected to:</strong> ' +
+						peer_info.innerHTML = 'Conectado a: ' +
 						remoteCandidate.ip + ':' + remoteCandidate.port;
 						} else if (remoteCandidate.ipAddress && remoteCandidate.portNumber) {
 						// Fall back to old names.
-						peerDiv.innerHTML = '<strong>Connected to:</strong> ' +
+						peer_info.innerHTML = 'Conectado a: ' +
 						remoteCandidate.ipAddress +
 						':' + remoteCandidate.portNumber;
 					}
