@@ -22,11 +22,11 @@ var receiverStatsDiv = document.querySelector('div#receiverStats');
 
 
 // Configuración del servidor STUN a utilizar por defecto.
-var pcConfig = {
+/*var pcConfig = {
 	'iceServers': [{
 		'urls': 'stun:stun.l.google.com:19302'
 	}]
-};
+};*/
 // Configuración de los recursos a usar.
 var sdpConstraints = {
 	offerToReceiveAudio: true,
@@ -247,7 +247,29 @@ window.onbeforeunload = function() {
 
 function createPeerConnection() {
 	try {
-		pc = new RTCPeerConnection(null);
+		pc = new RTCPeerConnection({ // Configuración servidores STUN por defecto.
+			iceServers: [
+				{urls:'stun:stun.l.google.com:19302'},
+				{urls:'stun:stun1.l.google.com:19302'},
+				{urls:'stun:stun2.l.google.com:19302'},
+				{urls:'stun:stun3.l.google.com:19302'},
+				{urls:'stun:stun4.l.google.com:19302'},
+				{urls:'stun:stun01.sipphone.com'},
+				{urls:'stun:stun.ekiga.net'},
+				{urls:'stun:stun.fwdnet.net'},
+				{urls:'stun:stun.ideasip.com'},
+				{urls:'stun:stun.iptel.org'},
+				{urls:'stun:stun.rixtelecom.se'},
+				{urls:'stun:stun.schlund.de'},
+				{urls:'stun:stunserver.org'},
+				{urls:'stun:stun.softjoys.com'},
+				{urls:'stun:stun.voiparound.com'},
+				{urls:'stun:stun.voipbuster.com'},
+				{urls:'stun:stun.voipstunt.com'},
+				{urls:'stun:stun.voxgratia.org'},
+				{urls:'stun:stun.xten.com'}
+			]
+		});			
 		pc.onicecandidate = handleIceCandidate;
 		pc.onaddstream = handleRemoteStreamAdded;
 		pc.onremovestream = handleRemoteStreamRemoved;
