@@ -12,21 +12,14 @@ var codec_selector = document.getElementById('codec_selector');
 var room_name = document.getElementById('room_name');
 var localAudio = document.getElementById('localAudio');
 var remoteAudio = document.getElementById('remoteAudio');
-var start_test_btn = document.getElementById('start_test_btn');
-start_test_btn.disabled = true;
-start_test_btn.onclick = startTest;
+var show_net_info_btn = document.getElementById('show_net_info_btn');
+show_net_info_btn.disabled = true;
+show_net_info_btn.onclick = showNetInfo;
 var active_codec = document.getElementById('active_codec');
 var peer_info = document.getElementById('peer_info');
 var senderStatsDiv = document.querySelector('div#senderStats');
 var receiverStatsDiv = document.querySelector('div#receiverStats');
 
-
-// Configuración del servidor STUN a utilizar por defecto.
-/*var pcConfig = {
-	'iceServers': [{
-		'urls': 'stun:stun.l.google.com:19302'
-	}]
-};*/
 // Configuración de los recursos a usar.
 var sdpConstraints = {
 	offerToReceiveAudio: true,
@@ -37,7 +30,7 @@ var constraints = {
 	video: false,
 	audio: true
 };
-var room = prompt('Ingrese el nombre de la sala a la que desee entrar:','abc');
+var room = prompt('Ingrese el nombre de la sala a la que desee entrar:','Sala 1');
 room_name.innerHTML = 'Sala: ' + room;
 var codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
 codec_selector.onchange = codecSelection;
@@ -131,14 +124,18 @@ function codecSelection() {
 	codec_selected = codec_selector.options[codec_selector.selectedIndex].value;
 }
 
-function startTest() {
-	console.log('pc: ',pc);
+/**
+* Función para mostrar la información de red proveida por la interfaz RTCStatsReport,
+* la cual ofrece datos estadisticos sobre las conexiones RTCPeerConnection. (RTCPeerConnection.getStats())
+* Además muestra el codec activo en RTCPeerConnection, y la direccion ip y puerto del par al que está conectado.
+*/
+function showNetInfo() {
 	console.log('local sdp: ',pc.localDescription.sdp);
 	console.log('remote sdp: ',pc.remoteDescription.sdp);
-	var a_codec = getCodec(pc.localDescription.sdp);
-	active_codec.innerHTML = 'Codec activo: ' + a_codec;
+	var a_codec = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp local de RTCPeerConnection.
+	active_codec.innerHTML = 'Codec activo: ' + a_codec; 
 	
-	// Display statistics
+	// Visualización de datos estadisticos cada 1000 mseg.
 	setInterval(function() {
 		if(pc) {
 			pc.getStats(null)
@@ -190,7 +187,7 @@ function startTest() {
 	
 }
 
-// Obtiene el stream de datos.
+// Obtiene el stream de datos local.
 navigator.mediaDevices.getUserMedia(constraints)
 .then(gotStream)
 .catch(function(e) {
@@ -198,7 +195,7 @@ navigator.mediaDevices.getUserMedia(constraints)
 });
 
 /**
-* Función para obtener el stream de datos local
+* Función para obtener el stream de datos local.
 * @param stream
 * @return localstream
 */
@@ -213,17 +210,6 @@ function gotStream(stream) {
 	}
 }
 
-/**
-	* Si la petición de la pagina no se hace desde la direccion de loopback se intenta obtener 
-	* un servidor TURN libre del listado de computeengineondemand.appspot.com
-*/
-/*if (location.hostname !== 'localhost') {
-	requestTurn(
-    'https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913'
-	);
-}*/
-
-
 function maybeStart() {
 	console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
 	if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
@@ -232,7 +218,7 @@ function maybeStart() {
 		pc.addStream(localStream);
 		isStarted = true;
 		codec_selector.disabled = true; // Deshabilitar la interfaz de selección de codec.
-		start_test_btn.disabled = false; // Habilitar el boton de muestra de información de red.
+		show_net_info_btn.disabled = false; // Habilitar el boton de muestra de información de red.
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
 			doCall();
@@ -240,6 +226,10 @@ function maybeStart() {
 	}
 }
 
+/**
+* Evento que ocurre cuando el documento está por ser cerrado. Se usa para enviar un mensaje de
+* despedida al servidor y cerrar el websocket.
+*/
 window.onbeforeunload = function() {
 	hangup();
 	return null;
@@ -328,35 +318,6 @@ function onCreateSessionDescriptionError(error) {
 	trace('Failed to create session description: ' + error.toString());
 }
 
-function requestTurn(turnURL) {
-	var turnExists = false;
-	for (var i in pcConfig.iceServers) {
-		if (pcConfig.iceServers[i].urls.substr(0, 5) === 'turn:') {
-			turnExists = true;
-			turnReady = true;
-			break;
-		}
-	}
-	if (!turnExists) {
-		console.log('Getting TURN server from ', turnURL);
-		// No TURN server. Get one from computeengineondemand.appspot.com:
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function() {
-			if (xhr.readyState === 4 && xhr.status === 200) {
-				var turnServer = JSON.parse(xhr.responseText);
-				console.log('Got TURN server: ', turnServer);
-				pcConfig.iceServers.push({
-					'url': 'turn:' + turnServer.username + '@' + turnServer.turn,
-					'credential': turnServer.password
-				});
-				turnReady = true;
-			}
-		};
-		xhr.open('GET', turnURL, true);
-		xhr.send();
-	}
-}
-
 function handleRemoteStreamAdded(event) {
 	console.log('Remote stream added.');
 	remoteAudio.srcObject = event.stream;
@@ -377,7 +338,7 @@ function hangup() {
 function handleRemoteHangup() {
 	console.log('Session terminated.');
 	stop();
-	isInitiator = true;
+	isInitiator = true; // El par que queda luego de la desconexión del otro es el nuevo iniciador.
 	codec_selector.disabled = false; // Habilitar la interfaz de selección de codec.
 	alert('La conexión se ha terminado');
 }
@@ -543,10 +504,13 @@ function removeCN(sdpLines, mLineIndex) {
 	return sdpLines;
 }
 
-//////////////////////////////////////////////////////////////
+/***** Funciones de visualización de la información de red *****/
 
-// Dumping a stats variable as a string.
-// might be named toString?
+/**
+* Función para mostrar como caracteres los datos estadisticos de la conexión (RTCPeerConnection) indicados en la interfaz RTCStatsReport.
+* @param results Datos estadisticos de la conexión RTCPeerConnection.
+* @return statsString Texto con los datos estadisticos de la conexión.
+*/
 function dumpStats(results) {
 	var statsString = '';
 	results.forEach(function(res) {
