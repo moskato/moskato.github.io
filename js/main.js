@@ -50,6 +50,7 @@ socket.on('created', function(room) {
 
 socket.on('full', function(room) {
 	console.log('Room ' + room + ' is full');
+	alert('La sala especificada está llena, intente con otra o espere a que se desocupe.');
 });
 
 socket.on('join', function (room){
