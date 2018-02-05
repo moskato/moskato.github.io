@@ -75,7 +75,7 @@ socket.on('log', function(array) {
 */
 function sendMessage(message) {
 	console.log('Client sending message: ', message);
-	socket.emit('message', message);
+	socket.emit('message', message, room);
 }
 
 /**
