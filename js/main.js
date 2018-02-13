@@ -4,22 +4,32 @@ var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
 var localStream;
-var pc;
 var remoteStream;
-var turnReady;
+var pc;
 var SIGNALING_SERVER = '190.254.213.124';
-var codec_selector = document.getElementById('codec_selector');
+var create_rooms_div = document.getElementById('create_room_div');
 var room_name = document.getElementById('room_name');
+var codec_selector = document.getElementById('codec_selector');
+var create_room_btn = document.getElementById('create_room_btn');
+var room_list_div = document.getElementById('room_list_div');
+var room_list_btns_div = document.getElementById('room_list_btns_div');
+var audio_display_div = document.getElementById('audio_display_div');
+var room_name_label = document.getElementById('room_name_label');
 var localAudio = document.getElementById('localAudio');
 var remoteAudio = document.getElementById('remoteAudio');
+var exit_room_btn = document.getElementById('exit_room_btn');
+exit_room_btn.onclick = exitRoom;
+var cambiar_codec_prf_btn = document.getElementById('cambiar_codec_prf_btn');
+var codec_selector_2 = document.getElementById('codec_selector_2');
+var guardar_codec_sel_btn = document.getElementById('guardar_codec_sel_btn');
+guardar_codec_sel_btn.onclick = saveSelCodec;
 var show_net_info_btn = document.getElementById('show_net_info_btn');
-show_net_info_btn.disabled = true;
 show_net_info_btn.onclick = showNetInfo;
+show_net_info_btn.disabled = true;
+var net_statistics_div = document.getElementById('net_statistics_div');
 var active_codec = document.getElementById('active_codec');
 var peer_info = document.getElementById('peer_info');
-var senderStatsDiv = document.querySelector('div#senderStats');
-var receiverStatsDiv = document.querySelector('div#receiverStats');
-
+var peer_connection_stats_div = document.querySelector('div#peer_connection_stats_div');
 // Configuración de los recursos a usar.
 var sdpConstraints = {
 	offerToReceiveAudio: true,
@@ -30,18 +40,20 @@ var constraints = {
 	video: false,
 	audio: true
 };
-var room = prompt('Ingrese el nombre de la sala a la que desee entrar:','Sala 1');
-room_name.innerHTML = 'Sala: ' + room;
-var codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
-codec_selector.onchange = codecSelection;
+var room;
+var codec_selected;
+var netStatsIntervalId;
 var socket = io.connect(SIGNALING_SERVER);
+var toggle_net_statistics = false;
+request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
 
 /***** Configuración Websockets *****/
 
-if (room !== '') {
-	socket.emit('create or join', room);
-	console.log('Attempted to create or  join room', room);
-}
+socket.on('room list', function(rooms) {
+	if(!isChannelReady && !isInitiator && !isStarted) {
+		create_rooms_list_btns(rooms);
+	}
+});
 
 socket.on('created', function(room) {
 	console.log('Created room ' + room);
@@ -51,6 +63,8 @@ socket.on('created', function(room) {
 socket.on('full', function(room) {
 	console.log('Room ' + room + ' is full');
 	alert('La sala especificada está llena, intente con otra o espere a que se desocupe.');
+	toggle_show_divs(false);
+	request_rooms_list();
 });
 
 socket.on('join', function (room){
@@ -64,9 +78,19 @@ socket.on('joined', function(room) {
 	isChannelReady = true;
 });
 
+socket.on('left', function(room){
+	console.log('left: ' + room);
+	isChannelReady = false;
+	isInitiator = false;
+});
+
 socket.on('log', function(array) {
 	console.log.apply(console, array);
 });
+
+socket.on('disconnect', function () {
+    console.log('disconnected to server');
+} );
 
 /***** Funciones Websockets *****/
 
@@ -116,13 +140,113 @@ socket.on('message', function(message) {
 	}
 });
 
+/**
+* Función para pedir la lista de salas creadas en el servidor web.
+*/
+function request_rooms_list() {
+	if(!isChannelReady && !isInitiator && !isStarted) {
+		socket.emit('request room list');
+	}
+}
+
 /***** Funciones *****/
 
 /**
-* Función para obtener el nombre del codec seleccionado en la inferfaz gráfica.
+* Función para detener intervalos creados con setInterval.
+* @param IntervalID Identificador del intervalo a detener.
 */
-function codecSelection() {
-	codec_selected = codec_selector.options[codec_selector.selectedIndex].value;
+function stop_interval(IntervalID) {
+	try {
+		clearInterval(IntervalID);
+	}
+	catch(e)
+	{
+		console.log(e);
+	}
+}
+
+/**
+* Función para crear botones que sirven para unirse las salas especificadas en la lista de salas.
+* @param rooms Lista de salas.
+*/
+function create_rooms_list_btns(rooms) {
+	var btns2create = '';
+	rooms.forEach(function(room){
+		 btns2create += '<button class="btn btn-outline-primary" onClick="createRoom(\''+room+'\')">'+room+'</button>';
+	});
+	room_list_btns_div.innerHTML = btns2create;
+}
+
+/**
+* Función para habilitar/deshabilitar mostrar la interfaz gráfica de creación de salas,
+* listado de salas, información transmisión de audio, y estadisticas de red.
+* @param show Valor booleano que representa la interfaz grafica disponible para creacion de salas(true)/muestra de información durante la transmisión de audio(false).
+*/
+function toggle_show_divs(show) {
+	if(show){
+		create_room_btn.disabled = true;
+		exit_room_btn.disabled = false;
+		create_rooms_div.style.display = 'none';
+		room_list_div.style.display = 'none';
+		audio_display_div.style.display = 'block';
+	}
+	else{
+		toggle_net_statistics = false;
+		create_room_btn.disabled = false;
+		exit_room_btn.disabled = true;
+		create_rooms_div.style.display = 'block';
+		room_list_div.style.display = 'block';
+		audio_display_div.style.display = 'none';
+		net_statistics_div.style.display = 'none';
+	}
+}
+
+/**
+* Función para la creación de salas en el servidor.
+* @param room_n Nombre de la sala.
+*/
+function createRoom(room_n) {
+	room = room_n;
+	if (typeof room !== 'undefined') {
+		socket.emit('create or join', room);
+		console.log('Attempted to create or join room', room);
+		room_name_label.innerHTML = 'Sala: ' + room;
+		codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
+		toggle_show_divs(true);
+		
+		// Obtiene el stream de datos local.
+		navigator.mediaDevices.getUserMedia(constraints)
+		.then(gotStream)
+		.catch(function(e) {
+			alert('getUserMedia() error: ' + e.name);
+		});
+	}
+}
+
+/**
+* Función para salir de la sala actual a la que se encuentra unido en el servidor.
+*/
+function exitRoom() {
+	if(pc) {
+		stop();
+		sendMessage('bye');
+	}
+	socket.emit('leave', room);
+	console.log('Attempted to leave room', room);
+	room = '';
+	room_name.value = '';
+	toggle_show_divs(false);
+	//request_rooms_list();
+	stop_interval(netStatsIntervalId);
+	var track = localStream.getTracks()[0];  // if only one media track
+	track.stop();
+}
+
+/**
+* Función para guardar el codec seleccionado en el dialogo modal.
+*/
+function saveSelCodec() {
+	codec_selected = codec_selector_2.options[codec_selector_2.selectedIndex].value;
 }
 
 /**
@@ -131,69 +255,69 @@ function codecSelection() {
 * Además muestra el codec activo en RTCPeerConnection, y la direccion ip y puerto del par al que está conectado.
 */
 function showNetInfo() {
-	console.log('local sdp: ',pc.localDescription.sdp);
-	console.log('remote sdp: ',pc.remoteDescription.sdp);
-	var a_codec = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp local de RTCPeerConnection.
-	active_codec.innerHTML = 'Codec activo: ' + a_codec; 
 	
-	// Visualización de datos estadisticos cada 1000 mseg.
-	setInterval(function() {
-		if(pc) {
-			pc.getStats(null)
-			.then(function(results) {
-				var statsString = dumpStats(results);
-				receiverStatsDiv.innerHTML = '<h2>Peer connection stats</h2>' + statsString;
-				
-				// figure out the peer's ip
-				var activeCandidatePair = null;
-				var remoteCandidate = null;
-				
-				// Search for the candidate pair, spec-way first.
-				results.forEach(function(report) {
-					if (report.type === 'transport') {
-						activeCandidatePair = results.get(report.selectedCandidatePairId);
-					}
-				});
-				// Fallback for Firefox and Chrome legacy stats.
-				if (!activeCandidatePair) {
+	if(toggle_net_statistics) {
+		toggle_net_statistics = false;
+		clearInterval(netStatsIntervalId);
+		net_statistics_div.style.display = 'none';
+	}
+	else {
+		toggle_net_statistics = true;
+		net_statistics_div.style.display = 'block';
+		console.log('local sdp: ',pc.localDescription.sdp);
+		console.log('remote sdp: ',pc.remoteDescription.sdp);
+	
+		// Visualización de datos estadisticos cada 1000 mseg.
+		netStatsIntervalId = setInterval(function() {
+			if(pc) {
+				var a_codec = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp local de RTCPeerConnection.
+				active_codec.value = a_codec;
+				pc.getStats(null)
+				.then(function(results) {
+					var statsString = dumpStats(results);
+					peer_connection_stats_div.innerHTML = '<h2>Peer connection stats</h2>' + statsString;
+					
+					// figure out the peer's ip
+					var activeCandidatePair = null;
+					var remoteCandidate = null;
+					
+					// Search for the candidate pair, spec-way first.
 					results.forEach(function(report) {
-						if (report.type === 'candidate-pair' && report.selected ||
-						report.type === 'googCandidatePair' &&
-						report.googActiveConnection === 'true') {
-							activeCandidatePair = report;
+						if (report.type === 'transport') {
+							activeCandidatePair = results.get(report.selectedCandidatePairId);
 						}
 					});
-				}
-				if (activeCandidatePair && activeCandidatePair.remoteCandidateId) {
-					remoteCandidate = results.get(activeCandidatePair.remoteCandidateId);
-				}
-				if (remoteCandidate) {
-					if (remoteCandidate.ip && remoteCandidate.port) {
-						peer_info.innerHTML = 'Conectado a: ' +
-						remoteCandidate.ip + ':' + remoteCandidate.port;
-						} else if (remoteCandidate.ipAddress && remoteCandidate.portNumber) {
-						// Fall back to old names.
-						peer_info.innerHTML = 'Conectado a: ' +
-						remoteCandidate.ipAddress +
-						':' + remoteCandidate.portNumber;
+					// Fallback for Firefox and Chrome legacy stats.
+					if (!activeCandidatePair) {
+						results.forEach(function(report) {
+							if (report.type === 'candidate-pair' && report.selected ||
+							report.type === 'googCandidatePair' &&
+							report.googActiveConnection === 'true') {
+								activeCandidatePair = report;
+							}
+						});
 					}
-				}
-				}, function(err) {
-				console.log(err);
-			});
-			} else {
-			console.log('Not connected yet');
-		}
-	}, 1000);
-	
+					if (activeCandidatePair && activeCandidatePair.remoteCandidateId) {
+						remoteCandidate = results.get(activeCandidatePair.remoteCandidateId);
+					}
+					if (remoteCandidate) {
+						if (remoteCandidate.ip && remoteCandidate.port) {
+							peer_info.value = remoteCandidate.ip + ':' + remoteCandidate.port;
+							} else if (remoteCandidate.ipAddress && remoteCandidate.portNumber) {
+							// Fall back to old names.
+							peer_info.value = remoteCandidate.ipAddress +
+							':' + remoteCandidate.portNumber;
+						}
+					}
+					}, function(err) {
+					console.log(err);
+				});
+				} else {
+				console.log('Not connected yet');
+			}
+		}, 1000);
+	}
 }
-
-// Obtiene el stream de datos local.
-navigator.mediaDevices.getUserMedia(constraints)
-.then(gotStream)
-.catch(function(e) {
-	alert('getUserMedia() error: ' + e.name);
-});
 
 /**
 * Función para obtener el stream de datos local.
@@ -218,7 +342,7 @@ function maybeStart() {
 		createPeerConnection();
 		pc.addStream(localStream);
 		isStarted = true;
-		codec_selector.disabled = true; // Deshabilitar la interfaz de selección de codec.
+		cambiar_codec_prf_btn.disabled = true; // Deshabilitar la interfaz de selección de codec.
 		show_net_info_btn.disabled = false; // Habilitar el boton de muestra de información de red.
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
@@ -340,7 +464,7 @@ function handleRemoteHangup() {
 	console.log('Session terminated.');
 	stop();
 	isInitiator = true; // El par que queda luego de la desconexión del otro es el nuevo iniciador.
-	codec_selector.disabled = false; // Habilitar la interfaz de selección de codec.
+	cambiar_codec_prf_btn.disabled = false; // Habilitar la interfaz de selección de codec.
 	alert('La conexión se ha terminado');
 }
 

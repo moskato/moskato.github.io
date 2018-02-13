@@ -2,27 +2,48 @@ body {
 	font-family: sans-serif;
 }
 
-div.container {
-    width: 100%;
+.btn {
+	margin: 0.5em;
 }
 
-.flex-container {
-  display: flex;
-}
-
-div.audio_controls {
-	border:2px solid #a1a1a1;
-	border-radius:20px;
-	padding:0.8em;
-}
-
-section.net_statistics {
-	margin-top: 1em;
-	padding: 1em;
+.fieldset_outline {
 	border: 1px solid gray;
+	border-radius: 10px;
+	padding: 0.5em;
 }
 
-#room_name {
+.legend_outline {
+	width:inherit;
+	margin: 0px;
+    /*border-bottom:none;*/
+}
+
+.audio_display {
+	display: none;
+}
+
+.audio_controls {
+	margin: 0.5em;
+	border: 2px solid #a1a1a1;
+	border-radius: 20px;
+	padding: 0.8em;
+}
+
+.net_statistics{
+	margin: auto;
+	padding: 1em;
+	width: 50%;
+	justify-content: center;
+	text-align:left;
+	display: none;
+}
+
+#active_codec, #peer_info {
+	width: auto;
+}
+
+#room_name_label {
+	text-align: center;
 	font-size: 120%;
 	font-weight: bold;
 }
@@ -32,5 +53,5 @@ header, footer {
     color: Black;
     background-color: white;
     clear: left;
-    text-align: center;
+	text-align: center;
 }

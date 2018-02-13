@@ -7,6 +7,7 @@
 		<title>AoIP con WebRTC</title>
 		<link rel="icon" type="image/x-icon" href="/source/icon/favicon.ico">
 		<link rel="stylesheet" href="css/main.css"/>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity "sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 	</head>
 	
 	<body>
@@ -14,10 +15,42 @@
 		<header>
 			<h1>Estudio e Implementación de aplicaciones soportadas en WebRTC que permitan mejorar la Calidad de Experiencia (QoE) del Audio sobre IP (AoIP)</h1>
 		</header>
-		<div class="container">
-			<section class="audio_display">
-				<p id="room_name"></p>
-				<div class="flex-container">
+		<div class="container-fluid">
+			<div id="create_room_div" class="create_room">
+				<form><!--action="javascript:document.getElementById('create_room_btn').click();"-->
+					<fieldset class="fieldset_outline">
+						<legend class="legend_outline">Crear una sala</legend>
+						<div class="form-row align-items-end justify-content-center">
+							<div class="col-auto">
+								<label for="room_name" class="col-form-label">Nombre sala</label>
+								<input type="text" id="room_name" class="form-control" required>
+							</div>
+							<div class="col-auto">
+								<label for="codec_selector" class="col-form-label">Codec de preferencia a usar</label>
+								<select id="codec_selector" class="form-control">
+									<option value="opus/48000" selected = "selected">OPUS variable bit rate (6kbps-510kbps)</option>
+									<option value="ISAC/16000">ISAC 16kbps bit rate</option>
+									<option value="ISAC/32000">ISAC 32kbps bit rate</option>
+									<option value="G722/8000">G.722</option>
+									<option value="iLBC/8000" disabled>iLBC</option>
+								</select>
+							</div>
+							<div class="col-auto">
+								<button id="create_room_btn" class="btn btn-primary mb-2" onClick="createRoom(document.getElementById('room_name').value)">Crear Sala</button>
+							</div>
+						</div>
+					</fieldset>
+				</form>
+			</div>
+			<div id="room_list_div" class="room_list">
+				<fieldset class="fieldset_outline">
+					<legend class="legend_outline">Unirse a una sala</legend>
+					<div id="room_list_btns_div" class="d-flex justify-content-center"></div>
+				</fieldset>
+			</div>
+			<div id="audio_display_div" class="audio_display">
+				<p id="room_name_label"></p>
+				<div class="d-flex justify-content-center">
 					<div class="audio_controls">
 						Audio Local
 						<br>
@@ -30,32 +63,65 @@
 					</div>
 				</div>
 				<br>
-				Codec de preferencia a usar:
-				<select id="codec_selector">
-					<option value="opus/48000" selected = "selected">OPUS variable bit rate (6kbps-510kbps)</option>
-					<option value="ISAC/16000">ISAC 16kbps bit rate</option>
-					<option value="ISAC/32000">ISAC 32kbps bit rate</option>
-					<option value="G722/8000">G.722</option>
-					<option value="iLBC/8000" disabled>iLBC</option>
-				</select>
-			</section>
-			<section class="net_statistics">
-				<button id="show_net_info_btn">Mostrar estadisticas de red</button>
+				<div class="d-flex justify-content-center">
+					<button id="exit_room_btn" class="btn btn-secondary">Salir de la sala</button>
+					<button id="cambiar_codec_prf_btn" type="button" class="btn btn-info" data-toggle="modal" data-target="#cambiarCodecModal">Cambiar codec preferido</button>
+				<button id="show_net_info_btn" class="btn btn-primary">Mostrar estadisticas de red</button>
+				</div>
+				</div>
 				<br>
-				<br>
-				<strong id="active_codec"></strong>
-				<br>
-				<strong id="peer_info"></strong>
-				<div id="senderStats"></div>
-				<div id="receiverStats"></div>
-			</section>
-		</div>
-		<footer>2018</footer>
-		<!--<script src="/socket.io/socket.io.js"></script>-->
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
-		<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-		<script src="js/main.js"></script>
+				<!-- Modal -->
+				<div class="modal fade" id="cambiarCodecModal" tabindex="-1" role="dialog" aria-labelledby="cambiarCodecModalLabel" aria-hidden="true">
+					<div class="modal-dialog" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title" id="cambiarCodecModalLabel">Cambiar codec preferido</h5>
+								<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+							<div class="modal-body">
+								Codec de preferencia a usar:
+								<br>
+								<em>(Sólo se puede cambiar mientras la comunicación con otro par no esté activa.)</em>
+								<select id="codec_selector_2" class="form-control">
+									<option value="opus/48000" selected = "selected">OPUS variable bit rate (6kbps-510kbps)</option>
+									<option value="ISAC/16000">ISAC 16kbps bit rate</option>
+									<option value="ISAC/32000">ISAC 32kbps bit rate</option>
+									<option value="G722/8000">G.722</option>
+									<option value="iLBC/8000" disabled>iLBC</option>
+								</select>	
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+								<button id="guardar_codec_sel_btn" type="button" class="btn btn-primary" data-dismiss="modal">Guardar</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- Modal End -->
+				
+				<div id="net_statistics_div" class="net_statistics">
+					<div class="d-flex flex-row justify-content-center">
+						<label for="peer_info" class="p-2">Conectado a:</label>
+						<input id="peer_info" class="form-control p-2" type="text" placeholder="" readonly>
+					</div>
+					<div class="d-flex flex-row justify-content-center">
+						<label for="active_codec" class="p-2">Codec activo:</label>
+						<input id="active_codec" class="form-control p-2" type="text" placeholder="" readonly>
+					</div>
+					<div id="peer_connection_stats_div"></div>
+				</div>
+			</div>
+			<footer>2018</footer>
+			<!--<script src="/socket.io/socket.io.js"></script>-->
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+			<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+			<script src="js/main.js"></script>
+			<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+			<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+			
+		</body>
 		
-	</body>
-	
-</html>
+	</html>
