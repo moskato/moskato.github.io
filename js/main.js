@@ -50,6 +50,7 @@ request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
 /***** Configuración Websockets *****/
 
 socket.on('room list', function(rooms) {
+	console.log('room list arrived');
 	if(!isChannelReady && !isInitiator && !isStarted) {
 		create_rooms_list_btns(rooms);
 	}
@@ -145,6 +146,7 @@ socket.on('message', function(message) {
 */
 function request_rooms_list() {
 	if(!isChannelReady && !isInitiator && !isStarted) {
+		console.log('requesting room list');
 		socket.emit('request room list');
 	}
 }
@@ -207,13 +209,13 @@ function toggle_show_divs(show) {
 */
 function createRoom(room_n) {
 	room = room_n;
-	if (typeof room !== 'undefined') {
+	if (room !=='' || typeof room !== 'undefined') {
 		socket.emit('create or join', room);
 		console.log('Attempted to create or join room', room);
 		room_name_label.innerHTML = 'Sala: ' + room;
 		codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
 		toggle_show_divs(true);
-		
+
 		// Obtiene el stream de datos local.
 		navigator.mediaDevices.getUserMedia(constraints)
 		.then(gotStream)
@@ -408,12 +410,6 @@ function handleIceCandidate(event) {
 		} else {
 		console.log('End of candidates.');
 	}
-}
-
-function handleRemoteStreamAdded(event) {
-	console.log('Remote stream added.');
-	remoteAudio.srcObject = event.stream;
-	remoteStream = event.stream;
 }
 
 function handleCreateOfferError(event) {

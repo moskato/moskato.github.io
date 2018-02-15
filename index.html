@@ -17,7 +17,7 @@
 		</header>
 		<div class="container-fluid">
 			<div id="create_room_div" class="create_room">
-				<form><!--action="javascript:document.getElementById('create_room_btn').click();"-->
+				<!--<form> action="javascript:document.getElementById('create_room_btn').click();"-->
 					<fieldset class="fieldset_outline">
 						<legend class="legend_outline">Crear una sala</legend>
 						<div class="form-row align-items-end justify-content-center">
@@ -36,11 +36,11 @@
 								</select>
 							</div>
 							<div class="col-auto">
-								<button id="create_room_btn" class="btn btn-primary mb-2" onClick="createRoom(document.getElementById('room_name').value)">Crear Sala</button>
+								<button id="create_room_btn" class="btn btn-primary" onClick="createRoom(document.getElementById('room_name').value)">Crear Sala</button>
 							</div>
 						</div>
 					</fieldset>
-				</form>
+				<!--</form>-->
 			</div>
 			<div id="room_list_div" class="room_list">
 				<fieldset class="fieldset_outline">
