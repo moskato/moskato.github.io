@@ -40,6 +40,26 @@ var constraints = {
 	video: false,
 	audio: true
 };
+// Configuración de los servidores ICE/TURN a usar en la conexión. //{urls:'stun:stunserver.org'},
+var ice_turn_servers = { iceServers: [ 	{urls:'stun:stun.l.google.com:19302'},
+									{urls:'stun:stun1.l.google.com:19302'},
+									{urls:'stun:stun2.l.google.com:19302'},
+									{urls:'stun:stun3.l.google.com:19302'},
+									{urls:'stun:stun4.l.google.com:19302'},
+									{urls:'stun:stun01.sipphone.com'},
+									{urls:'stun:stun.ekiga.net'},
+									{urls:'stun:stun.fwdnet.net'},
+									{urls:'stun:stun.ideasip.com'},
+									{urls:'stun:stun.iptel.org'},
+									{urls:'stun:stun.rixtelecom.se'},
+									{urls:'stun:stun.schlund.de'},
+									{urls:'stun:stun.softjoys.com'},
+									{urls:'stun:stun.voiparound.com'},
+									{urls:'stun:stun.voipbuster.com'},
+									{urls:'stun:stun.voipstunt.com'},
+									{urls:'stun:stun.voxgratia.org'},
+									{urls:'stun:stun.xten.com'}
+]};
 var room;
 var codec_selected;
 var netStatsIntervalId;
@@ -47,8 +67,13 @@ var socket = io.connect(SIGNALING_SERVER);
 var toggle_net_statistics = false;
 request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
 
-/***** Configuración Websockets *****/
+/****************************** Configuración Websockets ******************************/
 
+/**
+* Función para manejar la petición de la lista de salas activas en el servidor. Si el par está 
+* buscando salas a unirse se crean botones con los que permitirle unirse a las salas recibidas.
+* @param rooms lista de salas activas en el servidor.
+*/
 socket.on('room list', function(rooms) {
 	console.log('room list arrived');
 	if(!isChannelReady && !isInitiator && !isStarted) {
@@ -56,11 +81,20 @@ socket.on('room list', function(rooms) {
 	}
 });
 
+/**
+* Función para manejar el informe de que el par es el creador de la sala.
+* @param room nombre de la sala creada.
+*/
 socket.on('created', function(room) {
 	console.log('Created room ' + room);
 	isInitiator = true;
 });
 
+/**
+* Función para manejar el informe de que la sala a la que intenta unirse el par está llena.
+* Desactiva la interfaz gráfica de la transmision de datos y vuelve a pedir la lista de salas.
+* @param room nombre de la sala.
+*/
 socket.on('full', function(room) {
 	console.log('Room ' + room + ' is full');
 	alert('La sala especificada está llena, intente con otra o espere a que se desocupe.');
@@ -68,32 +102,51 @@ socket.on('full', function(room) {
 	request_rooms_list();
 });
 
+/**
+* Función para manejar el informe de que el par pidió unirse a una sala ya existente.
+* @param room nombre de la sala.
+*/
 socket.on('join', function (room){
 	console.log('Another peer made a request to join room ' + room);
 	console.log('This peer is the initiator of room ' + room + '!');
 	isChannelReady = true;
 });
 
+/**
+* Función para manejar el informe de que el par se unió a una sala ya existente.
+* @param room nombre de la sala.
+*/
 socket.on('joined', function(room) {
 	console.log('joined: ' + room);
 	isChannelReady = true;
 });
 
+/**
+* Función para manejar el informe de que el par se salió de la sala especificada.
+* @param room nombre de la sala.
+*/
 socket.on('left', function(room){
 	console.log('left: ' + room);
 	isChannelReady = false;
 	isInitiator = false;
 });
 
+/**
+* Función para registrar los mensajes del servidor en el cliente.
+* @param array Registro enviado por el servidor.
+*/
 socket.on('log', function(array) {
 	console.log.apply(console, array);
 });
 
+/**
+* Función para manejar la desconexión de la conexión con el servidor. 
+*/
 socket.on('disconnect', function () {
     console.log('disconnected to server');
 } );
 
-/***** Funciones Websockets *****/
+/****************************** Funciones Websockets ******************************/
 
 /**
 * Función para enviar un mensaje al servidor web.
@@ -107,11 +160,11 @@ function sendMessage(message) {
 /**
 * Función para recibir mensajes. Los mensajes pueden ser de 5 clases.
 * 1.got user media: Marca la obtención del stream de datos del emisor del mensaje.
-* 2.offer: Inicia la comunicación entre pares.
-* 3.answer: Establecen la comunicacion con entre pares. Obtiene la informacion de
-*           contacto del mensaje y la configura en la descripcion remota.
-* 4.candidate: Establece un candidato remoto ICE apartir del mensaje.
-* 5.bye: Marca el final de la comunicación del par.
+* 2.offer: Inicia la negociación de la comunicación entre pares al hacer la oferta.
+* 3.answer: Establecen la comunicacion con entre pares. Obtiene la información de
+*           contacto del mensaje y la configura en la descripción remota.
+* 4.candidate: Establece un candidato remoto ICE a partir del mensaje.
+* 5.bye: Marca el final de la comunicación del par remoto.
 * @param message
 */
 socket.on('message', function(message) {
@@ -151,7 +204,7 @@ function request_rooms_list() {
 	}
 }
 
-/***** Funciones *****/
+/****************************** Funciones ******************************/
 
 /**
 * Función para detener intervalos creados con setInterval.
@@ -240,8 +293,8 @@ function exitRoom() {
 	toggle_show_divs(false);
 	//request_rooms_list();
 	stop_interval(netStatsIntervalId);
-	var track = localStream.getTracks()[0];  // if only one media track
-	track.stop();
+	var track = localStream.getTracks()[0];  
+	track.stop(); // detiene el stream local de audio.
 }
 
 /**
@@ -322,9 +375,17 @@ function showNetInfo() {
 }
 
 /**
+* Evento que ocurre cuando el documento está por ser cerrado. Se usa para enviar un mensaje de
+* despedida al servidor y cerrar el websocket.
+*/
+window.onbeforeunload = function() {
+	hangup();
+	return null;
+};
+
+/**
 * Función para obtener el stream de datos local.
 * @param stream
-* @return localstream
 */
 function gotStream(stream) {
 	console.log('Getting user media with constraints', constraints);
@@ -337,11 +398,15 @@ function gotStream(stream) {
 	}
 }
 
+/**
+* Función que al comprobar los requisitos previos inicia el proceso de negociación para establecer la 
+* transmisión de audio al crear la conexión entre pares y añadir el stream local.
+*/
 function maybeStart() {
 	console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
 	if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
 		console.log('>>>>>> creating peer connection');
-		createPeerConnection();
+		createPeerConnection(ice_turn_servers);
 		pc.addStream(localStream);
 		isStarted = true;
 		cambiar_codec_prf_btn.disabled = true; // Deshabilitar la interfaz de selección de codec.
@@ -354,39 +419,13 @@ function maybeStart() {
 }
 
 /**
-* Evento que ocurre cuando el documento está por ser cerrado. Se usa para enviar un mensaje de
-* despedida al servidor y cerrar el websocket.
+* Función para crear objeto de la clase RTCPeerConnection e inicializarlo con los servidores de STUN/TURN a usar en
+* la conexión, además de establecer los manejadores de eventos de la conexión.
+* @param ICE_Config JSON que contiene la información de la dirección y autenticación de los servidores ICE/TURN a usar en la conexión.  
 */
-window.onbeforeunload = function() {
-	hangup();
-	return null;
-};
-
-function createPeerConnection() {
+function createPeerConnection(ICE_Config) {
 	try {
-		pc = new RTCPeerConnection({ // Configuración servidores STUN por defecto.
-			iceServers: [
-				{urls:'stun:stun.l.google.com:19302'},
-				{urls:'stun:stun1.l.google.com:19302'},
-				{urls:'stun:stun2.l.google.com:19302'},
-				{urls:'stun:stun3.l.google.com:19302'},
-				{urls:'stun:stun4.l.google.com:19302'},
-				{urls:'stun:stun01.sipphone.com'},
-				{urls:'stun:stun.ekiga.net'},
-				{urls:'stun:stun.fwdnet.net'},
-				{urls:'stun:stun.ideasip.com'},
-				{urls:'stun:stun.iptel.org'},
-				{urls:'stun:stun.rixtelecom.se'},
-				{urls:'stun:stun.schlund.de'},
-				{urls:'stun:stunserver.org'},
-				{urls:'stun:stun.softjoys.com'},
-				{urls:'stun:stun.voiparound.com'},
-				{urls:'stun:stun.voipbuster.com'},
-				{urls:'stun:stun.voipstunt.com'},
-				{urls:'stun:stun.voxgratia.org'},
-				{urls:'stun:stun.xten.com'}
-			]
-		});			
+		pc = new RTCPeerConnection(ICE_Config);			
 		pc.onicecandidate = handleIceCandidate;
 		pc.onaddstream = handleRemoteStreamAdded;
 		pc.onremovestream = handleRemoteStreamRemoved;
@@ -449,6 +488,19 @@ function handleRemoteStreamRemoved(event) {
 	console.log('Remote stream removed. Event: ', event);
 }
 
+/**
+* Función para cerrar la conexion entre pares en el objeto RTCPeerConnection.
+*/
+function stop() {
+	isStarted = false;
+	pc.close();
+	pc = null;
+}
+
+/**
+* Función para cerrar la conexión entre pares y el websocket e informar al servidor del cierre al enviar un
+* mensaje de terminación de la conexión.
+*/
 function hangup() {
 	console.log('Hanging up.');
 	stop();
@@ -456,6 +508,11 @@ function hangup() {
 	socket.disconnect();
 }
 
+/**
+* Función que maneja la desconexión por parte del otro par de la transmisión de audio al cerrar la conexión actual
+* y dejar al par listo para recibir otra conexión en la misma sala.
+* (se activa al recibir un mensaje de 'bye' retransmitido por el servidor de señalización)
+*/
 function handleRemoteHangup() {
 	console.log('Session terminated.');
 	stop();
@@ -464,13 +521,7 @@ function handleRemoteHangup() {
 	alert('La conexión se ha terminado');
 }
 
-function stop() {
-	isStarted = false;
-	pc.close();
-	pc = null;
-}
-
-/***** Funciones Codec *****/
+/****************************** Funciones Codec ******************************/
 
 /**
 * Función para obtener el nombre del codec de audio en uso. (se obtiene del sdp local)
@@ -542,8 +593,8 @@ function setCodec(sdp,codec) {
 * Función para obtener una extraer del sdp el codec seleccionado mediante 
 * una expresion regular. Retorna por defecto la expresion regular de Opus.
 * @param codec nombre del codec segun el sdp.
-* @return regexpr
-*/
+* @return regexpr expresion regular del codec seleccionado.
+*/ 
 function getRegExprCod(codec) {
 	var regexpr
 	switch(codec){
@@ -625,7 +676,7 @@ function removeCN(sdpLines, mLineIndex) {
 	return sdpLines;
 }
 
-/***** Funciones de visualización de la información de red *****/
+/****************************** Funciones de visualización de la información de red ******************************/
 
 /**
 * Función para mostrar como caracteres los datos estadisticos de la conexión (RTCPeerConnection) indicados en la interfaz RTCStatsReport.
