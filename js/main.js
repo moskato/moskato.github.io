@@ -558,9 +558,11 @@ function handleRemoteStreamRemoved(event) {
 * Función para cerrar la conexion entre pares en el objeto RTCPeerConnection.
 */
 function stop() {
-	isStarted = false;
-	pc.close();
-	pc = null;
+	if(pc) {
+		isStarted = false;
+		pc.close();
+		pc = null;
+	}
 }
 
 /**
