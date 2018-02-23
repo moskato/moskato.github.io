@@ -1,7 +1,6 @@
 'use strict';
 
-//var SIGNALING_SERVER = '190.254.213.124';
-var SIGNALING_SERVER = 'localhost:8080';
+var SIGNALING_SERVER = '190.254.213.124';
 var CHROME = (navigator.userAgent.toString().toLowerCase().indexOf("chrome") != -1);
 var isChannelReady = false;
 var isInitiator = false;
