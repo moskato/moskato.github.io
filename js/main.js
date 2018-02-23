@@ -218,8 +218,7 @@ function stop_interval(IntervalID) {
 	try {
 		clearInterval(IntervalID);
 	}
-	catch(e)
-	{
+	catch(e) {
 		console.log(e);
 	}
 }
@@ -440,7 +439,7 @@ function createPeerConnection(ICE_Config) {
 	try {
 		pc = new RTCPeerConnection(ICE_Config);			
 		pc.onicecandidate = handleIceCandidate;
-		pc.onaddstream = handleRemoteStreamAdded;
+		pc.ontrack = handleRemoteStreamAdded;
 		pc.onremovestream = handleRemoteStreamRemoved;
 		console.log('Created RTCPeerConnection');
 		} catch (e) {
@@ -493,11 +492,11 @@ function onCreateSessionDescriptionError(error) {
 
 function handleRemoteStreamAdded(event) {
 	console.log('Remote stream added.');
-	remoteAudio.srcObject = event.stream;
+	remoteAudio.srcObject = event.streams[0];
 	remoteAudio.setAttribute('autoplay','1'); // Autoreproduce el stream de audio remoto.
-	remoteStream = event.stream;
+	remoteStream = event.streams[0];
 	
-	/****************************** Grabador de Audio ******************************/
+	/****************************** Grabador de Audio 1******************************/
 	
 	/**
 	* Funciones para grabar el stream de audio remoto mediante la API de MediaRecorder (Sólo Google Chrome).	
@@ -547,7 +546,7 @@ function handleRemoteStreamAdded(event) {
 			remoteAudio.src = audioURL;
 		}
 	}
-	/****************************** Fin Grabador de Audio ******************************/
+	/****************************** Fin Grabador de Audio 1******************************/
 }
 
 function handleRemoteStreamRemoved(event) {
