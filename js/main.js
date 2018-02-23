@@ -1,12 +1,51 @@
 'use strict';
 
+//var SIGNALING_SERVER = '190.254.213.124';
+var SIGNALING_SERVER = 'localhost:8080';
+var CHROME = (navigator.userAgent.toString().toLowerCase().indexOf("chrome") != -1);
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
 var localStream;
 var remoteStream;
 var pc;
-var SIGNALING_SERVER = '190.254.213.124';
+var room;
+var codec_selected;
+var codec_last_used;
+var netStatsIntervalId;
+var toggle_net_statistics = false;
+var mediaRecorder;
+var socket = io.connect(SIGNALING_SERVER);
+// Configuración de los recursos a usar.
+var sdpConstraints = {
+	offerToReceiveAudio: true,
+	offerToReceiveVideo: false
+	};
+// Restricciones del stream a obtener por medio de getUserMedia().
+var constraints = {
+	video: false,
+	audio: true
+};
+// Configuración de los servidores ICE/TURN a usar en la conexión.
+var ice_turn_servers = { iceServers: [ 	{urls:'stun:stun.l.google.com:19302'},
+	{urls:'stun:stun1.l.google.com:19302'},
+	{urls:'stun:stun2.l.google.com:19302'},
+	{urls:'stun:stun3.l.google.com:19302'},
+	{urls:'stun:stun4.l.google.com:19302'}
+	/*{urls:'stun:stun01.sipphone.com'},
+	{urls:'stun:stun.ekiga.net'},
+	{urls:'stun:stun.fwdnet.net'},
+	{urls:'stun:stun.ideasip.com'},
+	{urls:'stun:stun.iptel.org'},
+	{urls:'stun:stun.rixtelecom.se'},
+	{urls:'stun:stun.schlund.de'},
+	{urls:'stun:stun.softjoys.com'},
+	{urls:'stun:stun.voiparound.com'},
+	{urls:'stun:stun.voipbuster.com'},
+	{urls:'stun:stun.voipstunt.com'},
+	{urls:'stun:stun.voxgratia.org'},
+	{urls:'stun:stun.xten.com'}*/
+]};
 var create_rooms_div = document.getElementById('create_room_div');
 var room_name = document.getElementById('room_name');
 var codec_selector = document.getElementById('codec_selector');
@@ -30,41 +69,7 @@ var net_statistics_div = document.getElementById('net_statistics_div');
 var active_codec = document.getElementById('active_codec');
 var peer_info = document.getElementById('peer_info');
 var peer_connection_stats_div = document.querySelector('div#peer_connection_stats_div');
-// Configuración de los recursos a usar.
-var sdpConstraints = {
-	offerToReceiveAudio: true,
-	offerToReceiveVideo: false
-};
-// Restricciones del stream a obtener por medio de getUserMedia().
-var constraints = {
-	video: false,
-	audio: true
-};
-// Configuración de los servidores ICE/TURN a usar en la conexión. //{urls:'stun:stunserver.org'},
-var ice_turn_servers = { iceServers: [ 	{urls:'stun:stun.l.google.com:19302'},
-									{urls:'stun:stun1.l.google.com:19302'},
-									{urls:'stun:stun2.l.google.com:19302'},
-									{urls:'stun:stun3.l.google.com:19302'},
-									{urls:'stun:stun4.l.google.com:19302'},
-									{urls:'stun:stun01.sipphone.com'},
-									{urls:'stun:stun.ekiga.net'},
-									{urls:'stun:stun.fwdnet.net'},
-									{urls:'stun:stun.ideasip.com'},
-									{urls:'stun:stun.iptel.org'},
-									{urls:'stun:stun.rixtelecom.se'},
-									{urls:'stun:stun.schlund.de'},
-									{urls:'stun:stun.softjoys.com'},
-									{urls:'stun:stun.voiparound.com'},
-									{urls:'stun:stun.voipbuster.com'},
-									{urls:'stun:stun.voipstunt.com'},
-									{urls:'stun:stun.voxgratia.org'},
-									{urls:'stun:stun.xten.com'}
-]};
-var room;
-var codec_selected;
-var netStatsIntervalId;
-var socket = io.connect(SIGNALING_SERVER);
-var toggle_net_statistics = false;
+
 request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
 
 /****************************** Configuración Websockets ******************************/
@@ -91,9 +96,9 @@ socket.on('created', function(room) {
 });
 
 /**
-* Función para manejar el informe de que la sala a la que intenta unirse el par está llena.
-* Desactiva la interfaz gráfica de la transmision de datos y vuelve a pedir la lista de salas.
-* @param room nombre de la sala.
+	* Función para manejar el informe de que la sala a la que intenta unirse el par está llena.
+	* Desactiva la interfaz gráfica de la transmision de datos y vuelve a pedir la lista de salas.
+	* @param room nombre de la sala.
 */
 socket.on('full', function(room) {
 	console.log('Room ' + room + ' is full');
@@ -143,7 +148,7 @@ socket.on('log', function(array) {
 * Función para manejar la desconexión de la conexión con el servidor. 
 */
 socket.on('disconnect', function () {
-    console.log('disconnected to server');
+	console.log('disconnected to server');
 } );
 
 /****************************** Funciones Websockets ******************************/
@@ -227,7 +232,7 @@ function stop_interval(IntervalID) {
 function create_rooms_list_btns(rooms) {
 	var btns2create = '';
 	rooms.forEach(function(room){
-		 btns2create += '<button class="btn btn-outline-primary" onClick="createRoom(\''+room+'\')">'+room+'</button>';
+		btns2create += '<button class="btn btn-outline-primary" onClick="createRoom(\''+room+'\')">'+room+'</button>';
 	});
 	room_list_btns_div.innerHTML = btns2create;
 }
@@ -268,7 +273,7 @@ function createRoom(room_n) {
 		room_name_label.innerHTML = 'Sala: ' + room;
 		codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
 		toggle_show_divs(true);
-
+		
 		// Obtiene el stream de datos local.
 		navigator.mediaDevices.getUserMedia(constraints)
 		.then(gotStream)
@@ -319,13 +324,20 @@ function showNetInfo() {
 	else {
 		toggle_net_statistics = true;
 		net_statistics_div.style.display = 'block';
-		console.log('local sdp: ',pc.localDescription.sdp);
-		console.log('remote sdp: ',pc.remoteDescription.sdp);
-	
-		// Visualización de datos estadisticos cada 1000 mseg.
-		netStatsIntervalId = setInterval(function() {
-			if(pc) {
-				var a_codec = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp local de RTCPeerConnection.
+		
+		
+		if(pc) {
+			console.log('local sdp: ',pc.localDescription.sdp);
+			console.log('remote sdp: ',pc.remoteDescription.sdp);
+			
+			// Visualización de datos estadisticos cada 1000 mseg.
+			netStatsIntervalId = setInterval(function() {
+				if(isInitiator) {
+					var a_codec = getCodec(pc.remoteDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
+				}
+				else {
+					var a_codec = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
+				}
 				active_codec.value = a_codec;
 				pc.getStats(null)
 				.then(function(results) {
@@ -367,10 +379,12 @@ function showNetInfo() {
 					}, function(err) {
 					console.log(err);
 				});
-				} else {
-				console.log('Not connected yet');
-			}
-		}, 1000);
+				
+			}, 1000);
+		} 
+		else {
+			console.log('Not connected yet');
+		}
 	}
 }
 
@@ -481,7 +495,60 @@ function onCreateSessionDescriptionError(error) {
 function handleRemoteStreamAdded(event) {
 	console.log('Remote stream added.');
 	remoteAudio.srcObject = event.stream;
+	remoteAudio.setAttribute('autoplay','1'); // Autoreproduce el stream de audio remoto.
 	remoteStream = event.stream;
+	
+	/****************************** Grabador de Audio ******************************/
+	
+	/**
+	* Funciones para grabar el stream de audio remoto mediante la API de MediaRecorder (Sólo Google Chrome).	
+	* El audio grabado se muestra en el elemento hmtl de audio remoto permitiendo descargarlo.
+	* (Si se conecta otro par a la sala antes de descargar el archivo de la transmisión de audio previa
+	*  el link de la grabación se pierde y se empieza una nueva grabación.)
+	*/
+	if(CHROME)
+	{
+		mediaRecorder = new MediaRecorder(remoteStream);
+		mediaRecorder.start();
+		console.log("recording of remote stream started");
+		var chunks = [];
+		mediaRecorder.ondataavailable = function(e) {
+			chunks.push(e.data);
+		}
+		mediaRecorder.onstop = function(e) {
+			console.log("recording of remote stream stopped");
+			var mtype;
+			if (codec_last_used !== null)
+			{
+				switch(codec_last_used){
+					case "opus/48000":
+					mtype = { 'type' : 'audio/opus; codecs=opus' };
+					break;
+					case "ISAC/16000":
+					mtype = { 'type' : 'audio/isac; codecs=isac' };
+					break;
+					case "ISAC/32000":
+					mtype = { 'type' : 'audio/isac; codecs=isac' };
+					break;
+					case "iLBC/8000":
+					mtype = { 'type' : 'audio/iLBC; codecs=iLBC' };
+					break;
+					case "G722/8000":
+					mtype = { 'type' : 'audio/G722; codecs=G722' };
+					break;
+					default:
+					mtype = { 'type' : 'audio/opus; codecs=opus' };
+					break;
+				}
+			}
+			var blob = new Blob(chunks, mtype);
+			chunks = [];
+			var audioURL = window.URL.createObjectURL(blob);
+			remoteAudio.removeAttribute('autoplay'); // Detiene la autoreproduccion del archivo de audio grabado.
+			remoteAudio.src = audioURL;
+		}
+	}
+	/****************************** Fin Grabador de Audio ******************************/
 }
 
 function handleRemoteStreamRemoved(event) {
@@ -516,7 +583,19 @@ function hangup() {
 function handleRemoteHangup() {
 	console.log('Session terminated.');
 	stop();
+	if(CHROME) { // Detiene el grabador de audio y obtiene el codec para establecer el MimeType (sólo para Google Chrome).
+		if(isInitiator) {
+			var codec_last_used = getCodec(pc.remoteDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
+		}
+		else {
+			var codec_last_used = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
+		} 
+		mediaRecorder.stop(); 
+	} 
 	isInitiator = true; // El par que queda luego de la desconexión del otro es el nuevo iniciador.
+	if (toggle_net_statistics == true) { 
+		clearInterval(netStatsIntervalId); // Detiene la obtención de datos estadisticos de la conexión.
+	}
 	cambiar_codec_prf_btn.disabled = false; // Habilitar la interfaz de selección de codec.
 	alert('La conexión se ha terminado');
 }
@@ -699,4 +778,3 @@ function dumpStats(results) {
 	});
 	return statsString;
 }
-
