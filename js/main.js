@@ -581,7 +581,6 @@ function hangup() {
 */
 function handleRemoteHangup() {
 	console.log('Session terminated.');
-	stop();
 	if(CHROME) { // Detiene el grabador de audio y obtiene el codec para establecer el MimeType (sólo para Google Chrome).
 		if(isInitiator) {
 			var codec_last_used = getCodec(pc.remoteDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
@@ -591,6 +590,7 @@ function handleRemoteHangup() {
 		} 
 		mediaRecorder.stop(); 
 	} 
+	stop();
 	isInitiator = true; // El par que queda luego de la desconexión del otro es el nuevo iniciador.
 	if (toggle_net_statistics == true) { 
 		clearInterval(netStatsIntervalId); // Detiene la obtención de datos estadisticos de la conexión.
