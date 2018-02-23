@@ -238,7 +238,7 @@ function create_rooms_list_btns(rooms) {
 /**
 * Función para habilitar/deshabilitar mostrar la interfaz gráfica de creación de salas,
 * listado de salas, información transmisión de audio, y estadisticas de red.
-* @param show Valor booleano que representa la interfaz grafica disponible para creacion de salas(true)/muestra de información durante la transmisión de audio(false).
+* @param show Valor booleano que representa la interfaz grafica disponible para creacion de salas(false)/muestra de información durante la transmisión de audio(true).
 */
 function toggle_show_divs(show) {
 	if(show){
