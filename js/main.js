@@ -5,21 +5,16 @@ var CHROME = (navigator.userAgent.toString().toLowerCase().indexOf("chrome") != 
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
-var localStream;
-var remoteStream;
+var local_stream;
+var remote_stream;
 var pc;
 var room;
 var codec_selected;
 var codec_last_used;
-var netStatsIntervalId;
+var net_stats_interval_id;
 var toggle_net_statistics = false;
-var mediaRecorder;
+var media_recorder;
 var socket = io.connect(SIGNALING_SERVER);
-// Configuración de los recursos a usar.
-var sdpConstraints = {
-	offerToReceiveAudio: true,
-	offerToReceiveVideo: false
-	};
 // Restricciones del stream a obtener por medio de getUserMedia().
 var constraints = {
 	video: false,
@@ -53,8 +48,8 @@ var room_list_div = document.getElementById('room_list_div');
 var room_list_btns_div = document.getElementById('room_list_btns_div');
 var audio_display_div = document.getElementById('audio_display_div');
 var room_name_label = document.getElementById('room_name_label');
-var localAudio = document.getElementById('localAudio');
-var remoteAudio = document.getElementById('remoteAudio');
+var local_audio = document.getElementById('local_audio');
+var remote_audio = document.getElementById('remote_audio');
 var exit_room_btn = document.getElementById('exit_room_btn');
 exit_room_btn.onclick = exitRoom;
 var cambiar_codec_prf_btn = document.getElementById('cambiar_codec_prf_btn');
@@ -69,7 +64,7 @@ var active_codec = document.getElementById('active_codec');
 var peer_info = document.getElementById('peer_info');
 var peer_connection_stats_div = document.querySelector('div#peer_connection_stats_div');
 
-request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
+requestRoomsList(); // pedir la lista de cuartos creados al iniciar.
 
 /****************************** Configuración Websockets ******************************/
 
@@ -81,7 +76,7 @@ request_rooms_list(); // pedir la lista de cuartos creados al iniciar.
 socket.on('room list', function(rooms) {
 	console.log('room list arrived');
 	if(!isChannelReady && !isInitiator && !isStarted) {
-		create_rooms_list_btns(rooms);
+		createRoomsListBtns(rooms);
 	}
 });
 
@@ -102,12 +97,12 @@ socket.on('created', function(room) {
 socket.on('full', function(room) {
 	console.log('Room ' + room + ' is full');
 	alert('La sala especificada está llena, intente con otra o espere a que se desocupe.');
-	toggle_show_divs(false);
-	request_rooms_list();
+	toggleShowDivs(false);
+	requestRoomsList();
 });
 
 /**
-* Función para manejar el informe de que el par pidió unirse a una sala ya existente.
+* Función para manejar el informe de que otro par pidió unirse a la sala creada.
 * @param room nombre de la sala.
 */
 socket.on('join', function (room){
@@ -201,7 +196,7 @@ socket.on('message', function(message) {
 /**
 * Función para pedir la lista de salas creadas en el servidor web.
 */
-function request_rooms_list() {
+function requestRoomsList() {
 	if(!isChannelReady && !isInitiator && !isStarted) {
 		console.log('requesting room list');
 		socket.emit('request room list');
@@ -214,7 +209,7 @@ function request_rooms_list() {
 * Función para detener intervalos creados con setInterval.
 * @param IntervalID Identificador del intervalo a detener.
 */
-function stop_interval(IntervalID) {
+function stopInterval(IntervalID) {
 	try {
 		clearInterval(IntervalID);
 	}
@@ -227,7 +222,7 @@ function stop_interval(IntervalID) {
 * Función para crear botones que sirven para unirse las salas especificadas en la lista de salas.
 * @param rooms Lista de salas.
 */
-function create_rooms_list_btns(rooms) {
+function createRoomsListBtns(rooms) {
 	var btns2create = '';
 	rooms.forEach(function(room){
 		btns2create += '<button class="btn btn-outline-primary" onClick="createRoom(\''+room+'\')">'+room+'</button>';
@@ -240,7 +235,7 @@ function create_rooms_list_btns(rooms) {
 * listado de salas, información transmisión de audio, y estadisticas de red.
 * @param show Valor booleano que representa la interfaz grafica disponible para creacion de salas(false)/muestra de información durante la transmisión de audio(true).
 */
-function toggle_show_divs(show) {
+function toggleShowDivs(show) {
 	if(show){
 		create_room_btn.disabled = true;
 		exit_room_btn.disabled = false;
@@ -270,7 +265,7 @@ function createRoom(room_n) {
 		console.log('Attempted to create or join room', room);
 		room_name_label.innerHTML = 'Sala: ' + room;
 		codec_selected = codec_selector.options[codec_selector.selectedIndex].value; // Obtener el nombre del codec a usar.
-		toggle_show_divs(true);
+		toggleShowDivs(true);
 		
 		// Obtiene el stream de datos local.
 		navigator.mediaDevices.getUserMedia(constraints)
@@ -286,17 +281,17 @@ function createRoom(room_n) {
 */
 function exitRoom() {
 	if(pc) {
-		stop();
 		sendMessage('bye');
 	}
+	stop();
 	socket.emit('leave', room);
 	console.log('Attempted to leave room', room);
 	room = '';
 	room_name.value = '';
-	toggle_show_divs(false);
-	//request_rooms_list();
-	stop_interval(netStatsIntervalId);
-	var track = localStream.getTracks()[0];  
+	toggleShowDivs(false);
+	//requestRoomsList();
+	stopInterval(net_stats_interval_id);
+	var track = local_stream.getTracks()[0];  
 	track.stop(); // detiene el stream local de audio.
 }
 
@@ -316,7 +311,7 @@ function showNetInfo() {
 	
 	if(toggle_net_statistics) {
 		toggle_net_statistics = false;
-		clearInterval(netStatsIntervalId);
+		clearInterval(net_stats_interval_id);
 		net_statistics_div.style.display = 'none';
 	}
 	else {
@@ -329,7 +324,7 @@ function showNetInfo() {
 			console.log('remote sdp: ',pc.remoteDescription.sdp);
 			
 			// Visualización de datos estadisticos cada 1000 mseg.
-			netStatsIntervalId = setInterval(function() {
+			net_stats_interval_id = setInterval(function() {
 				if(isInitiator) {
 					var a_codec = getCodec(pc.remoteDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
 				}
@@ -396,14 +391,14 @@ window.onbeforeunload = function() {
 };
 
 /**
-* Función para obtener el stream de datos local.
-* @param stream
+* Función para obtener el stream de datos local y reproducirlo en la página.
+* @param stream stream local.
 */
 function gotStream(stream) {
 	console.log('Getting user media with constraints', constraints);
 	console.log('Adding local stream.');
-	localAudio.srcObject = stream; // Mostrar el audio local en la página.
-	localStream = stream;
+	local_audio.srcObject = stream; // Mostrar el audio local en la página.
+	local_stream = stream;
 	sendMessage('got user media');
 	if (isInitiator) {
 		maybeStart();
@@ -415,11 +410,11 @@ function gotStream(stream) {
 * transmisión de audio al crear la conexión entre pares y añadir el stream local.
 */
 function maybeStart() {
-	console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
-	if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
+	console.log('>>>>>>> maybeStart() ', isStarted, local_stream, isChannelReady);
+	if (!isStarted && typeof local_stream !== 'undefined' && isChannelReady) {
 		console.log('>>>>>> creating peer connection');
 		createPeerConnection(ice_turn_servers);
-		pc.addStream(localStream);
+		pc.addStream(local_stream);
 		isStarted = true;
 		cambiar_codec_prf_btn.disabled = true; // Deshabilitar la interfaz de selección de codec.
 		show_net_info_btn.disabled = false; // Habilitar el boton de muestra de información de red.
@@ -439,8 +434,8 @@ function createPeerConnection(ICE_Config) {
 	try {
 		pc = new RTCPeerConnection(ICE_Config);			
 		pc.onicecandidate = handleIceCandidate;
-		pc.ontrack = handleRemoteStreamAdded;
-		pc.onremovestream = handleRemoteStreamRemoved;
+		pc.ontrack = handleremote_streamAdded;
+		pc.onremovestream = handleremote_streamRemoved;
 		console.log('Created RTCPeerConnection');
 		} catch (e) {
 		console.log('Failed to create PeerConnection, exception: ' + e.message);
@@ -467,34 +462,49 @@ function handleCreateOfferError(event) {
 	console.log('createOffer() error: ', event);
 }
 
+function onCreateSessionDescriptionError(error) {
+	trace('Failed to create session description: ' + error.toString());
+}
+
+/**
+* Función que crea una oferta SDP con el proposito de comenzar una nueva conexión por WebRTC a un par remoto.
+*/
 function doCall() {
 	console.log('Sending offer to peer');
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
 }
 
+/**
+* Función que crea una respuesta SDP a la oferta recibida de un par remoto durante la negociación de oferta/respuesta de una conexión por WebRTC.
+*/
 function doAnswer() {
 	console.log('Sending answer to peer.');
 	pc.createAnswer().then(setLocalAndSendMessage, onCreateSessionDescriptionError);
 }
 
+/**
+* Función que configura la oferta/respuesta SDP como la descripción local de la conexión, y envia la oferta/respuesta al otro par mediante el servidor de señalización.
+* @param sessionDescription Descripción local de la conexión.
+*/
 function setLocalAndSendMessage(sessionDescription) {
 	if(isInitiator) {
-		sessionDescription.sdp = setCodec(sessionDescription.sdp, codec_selected); // Establecer al codec seleccionado como predeterminado, si está disponible, sólo si es el par que inicia la comunicación.
+		sessionDescription.sdp = setCodec(sessionDescription.sdp, codec_selected); // Establece al codec seleccionado como predeterminado, si está disponible, sólo si es el par que inicia la comunicación.
 	}
 	pc.setLocalDescription(sessionDescription);
 	console.log('setLocalAndSendMessage sending message', sessionDescription);
 	sendMessage(sessionDescription);
 }
 
-function onCreateSessionDescriptionError(error) {
-	trace('Failed to create session description: ' + error.toString());
-}
-
-function handleRemoteStreamAdded(event) {
+/**
+* Función a ser llamada cuando el evento track ocurre en la interfaz RTCPeerConnection.
+* @param event De tipo RTCTrackEvent el cual es enviado cuando un MediaStreamTrack entrante has sido creado y asociado con un objeto RTCRtpReceiver el cual ha sido añadido al conjunto de * receptores en la conexión.
+*/
+function handleremote_streamAdded(event) {
 	console.log('Remote stream added.');
-	remoteAudio.srcObject = event.streams[0];
-	remoteAudio.setAttribute('autoplay','1'); // Autoreproduce el stream de audio remoto.
-	remoteStream = event.streams[0];
+	remote_stream = event.streams[0];
+	remote_audio.srcObject = remote_stream;
+	remote_audio.setAttribute('autoplay','1'); // Autoreproduce el stream de audio remoto.
+	
 	
 	/****************************** Grabador de Audio 1******************************/
 	
@@ -506,14 +516,14 @@ function handleRemoteStreamAdded(event) {
 	*/
 	if(CHROME)
 	{
-		mediaRecorder = new MediaRecorder(remoteStream);
-		mediaRecorder.start();
+		media_recorder = new MediaRecorder(remote_stream);
+		media_recorder.start();
 		console.log("recording of remote stream started");
 		var chunks = [];
-		mediaRecorder.ondataavailable = function(e) {
+		media_recorder.ondataavailable = function(e) {
 			chunks.push(e.data);
 		}
-		mediaRecorder.onstop = function(e) {
+		media_recorder.onstop = function(e) {
 			console.log("recording of remote stream stopped");
 			var mtype;
 			if (codec_last_used !== null)
@@ -542,14 +552,18 @@ function handleRemoteStreamAdded(event) {
 			var blob = new Blob(chunks, mtype);
 			chunks = [];
 			var audioURL = window.URL.createObjectURL(blob);
-			remoteAudio.removeAttribute('autoplay'); // Detiene la autoreproduccion del archivo de audio grabado.
-			remoteAudio.src = audioURL;
+			remote_audio.removeAttribute('autoplay'); // Detiene la autoreproduccion del archivo de audio grabado.
+			remote_audio.src = audioURL;
 		}
 	}
 	/****************************** Fin Grabador de Audio 1******************************/
 }
 
-function handleRemoteStreamRemoved(event) {
+/**
+* Función a ser llamada cuando el evento removestream ocurre en la interfaz RTCPeerConnection.
+* @param event De tipo RTCTrackEvent el cual es enviado cuando un MediaStream se elimina de esta conexión.
+*/
+function handleremote_streamRemoved(event) {
 	console.log('Remote stream removed. Event: ', event);
 }
 
@@ -589,12 +603,12 @@ function handleRemoteHangup() {
 		else {
 			var codec_last_used = getCodec(pc.localDescription.sdp); // Obtiene el codec del sdp de RTCPeerConnection.
 		} 
-		mediaRecorder.stop(); 
+		media_recorder.stop(); 
 	} 
 	stop();
 	isInitiator = true; // El par que queda luego de la desconexión del otro es el nuevo iniciador.
 	if (toggle_net_statistics == true) { 
-		clearInterval(netStatsIntervalId); // Detiene la obtención de datos estadisticos de la conexión.
+		clearInterval(net_stats_interval_id); // Detiene la obtención de datos estadisticos de la conexión.
 	}
 	cambiar_codec_prf_btn.disabled = false; // Habilitar la interfaz de selección de codec.
 	alert('La conexión se ha terminado');
