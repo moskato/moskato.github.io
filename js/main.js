@@ -551,8 +551,9 @@ function handleremote_streamAdded(event) {
 			}
 			var blob = new Blob(chunks, mtype);
 			chunks = [];
-			var audioURL = URL.createObjectURL(blob);
+			var audioURL = window.URL.createObjectURL(blob);
 			remote_audio.removeAttribute('autoplay'); // Detiene la autoreproduccion del archivo de audio grabado.
+			remote_audio.srcObject = blob;
 			remote_audio.src = audioURL;
 		}
 	}
